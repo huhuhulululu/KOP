@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS tape_rows (
     session TEXT NOT NULL,
     entry_date TEXT,
     days_before INTEGER,
+    entry_close REAL,
+    event_close REAL,
+    reaction_open REAL,
+    reaction_high REAL,
+    reaction_low REAL,
+    reaction_close REAL,
     iv_rank REAL,
     iv_percentile REAL,
     iv_source TEXT,
@@ -119,6 +125,22 @@ class Store:
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        existing = {row[1] for row in self.conn.execute("PRAGMA table_info(tape_rows)")}
+        extras = {
+            "entry_close": "REAL",
+            "event_close": "REAL",
+            "reaction_open": "REAL",
+            "reaction_high": "REAL",
+            "reaction_low": "REAL",
+            "reaction_close": "REAL",
+        }
+        for name, typ in extras.items():
+            if name not in existing:
+                self.conn.execute(f"ALTER TABLE tape_rows ADD COLUMN {name} {typ}")
+        self.conn.commit()
 
     def record_event(self, symbol: str, announce_date: str, session: str, fiscal_label: str, source: str) -> None:
         self.conn.execute(
@@ -136,18 +158,26 @@ class Store:
             """
             INSERT INTO tape_rows (
                 created_at, event_key, symbol, fiscal_label, announce_date, session,
-                entry_date, days_before, iv_rank, iv_percentile, iv_source, structure,
+                entry_date, days_before, entry_close, event_close,
+                reaction_open, reaction_high, reaction_low, reaction_close,
+                iv_rank, iv_percentile, iv_source, structure,
                 strikes_json, expiration, entry_quote_kind, entry_net, gap_pct,
                 close_move_pct, high_move_pct, low_move_pct, vendor_implied_move_pct,
                 vendor_iv_crush_pct, vendor_source, exit_rule, exit_date, exit_net,
                 fees_usd, pnl_usd, fill_status, notes
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(event_key, structure, fill_status) DO UPDATE SET
                 notes=excluded.notes,
                 gap_pct=excluded.gap_pct,
                 close_move_pct=excluded.close_move_pct,
                 high_move_pct=excluded.high_move_pct,
                 low_move_pct=excluded.low_move_pct,
+                entry_close=excluded.entry_close,
+                event_close=excluded.event_close,
+                reaction_open=excluded.reaction_open,
+                reaction_high=excluded.reaction_high,
+                reaction_low=excluded.reaction_low,
+                reaction_close=excluded.reaction_close,
                 vendor_implied_move_pct=excluded.vendor_implied_move_pct,
                 vendor_iv_crush_pct=excluded.vendor_iv_crush_pct
             """,
@@ -160,6 +190,12 @@ class Store:
                 payload["session"],
                 payload["entry_date"],
                 payload["days_before"],
+                payload["entry_close"],
+                payload["event_close"],
+                payload["reaction_open"],
+                payload["reaction_high"],
+                payload["reaction_low"],
+                payload["reaction_close"],
                 payload["iv_rank"],
                 payload["iv_percentile"],
                 payload["iv_source"],

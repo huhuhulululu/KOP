@@ -148,6 +148,12 @@ class TapeRow:
     session: Session
     entry_date: date | None
     days_before: int | None
+    entry_close: float | None
+    event_close: float | None
+    reaction_open: float | None
+    reaction_high: float | None
+    reaction_low: float | None
+    reaction_close: float | None
     iv_rank: float | None
     iv_percentile: float | None
     iv_source: str

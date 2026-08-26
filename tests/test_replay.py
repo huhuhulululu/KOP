@@ -31,6 +31,8 @@ class ReplayTests(unittest.TestCase):
             self.assertEqual(row.days_before, 3)
             self.assertIsNotNone(row.gap_pct)
             self.assertIsNotNone(row.close_move_pct)
+            self.assertIsNotNone(row.entry_close)
+            self.assertIsNotNone(row.event_close)
 
     def test_contrast_scores_only_do_nothing(self):
         bars = weekday_bars(date(2025, 1, 2), date(2026, 8, 26))

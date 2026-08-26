@@ -26,6 +26,10 @@ from kop.market.yahoo import bar_map, fetch_bars, trading_days
 from kop.models import Bar, EarningsEvent, TapeRow
 from kop.playbook import entry_date_for, exit_date_for
 
+
+def _px(value: float | None) -> str:
+    return f"{value:.2f}" if value is not None else "—"
+
 # ORATS-via-VolRadar 10-day ATM proxy. Not a fill. Not front-expiry IV.
 VENDOR_NOTES: dict[str, dict] = {
     "2025-08-27": {
@@ -110,6 +114,12 @@ def build_row(event: EarningsEvent, bars: list[Bar]) -> TapeRow:
         session=event.session,
         entry_date=path["entry_date"],
         days_before=path["days_before"],
+        entry_close=path["entry_close"],
+        event_close=path["event_close"],
+        reaction_open=path["reaction_open"],
+        reaction_high=path["reaction_high"],
+        reaction_low=path["reaction_low"],
+        reaction_close=path["reaction_close"],
         iv_rank=None,
         iv_percentile=None,
         iv_source="missing_no_daily_iv_series",
@@ -240,10 +250,11 @@ def render_markdown(rows: list[TapeRow], contrast: list[dict], countable: int) -
         # recover reaction prints from notes is ugly; keep implied/breach only here
         lines.append(
             f"| {row.fiscal_label} {row.announce_date} "
-            f"| — "
-            f"| — "
-            f"| gap {row.gap_pct:+.2f}% · close {row.close_move_pct:+.2f}% · "
-            f"H {row.high_move_pct:+.2f}% / L {row.low_move_pct:+.2f}% "
+            f"| {_px(row.entry_close)} "
+            f"| {_px(row.event_close)} "
+            f"| O {_px(row.reaction_open)} / H {_px(row.reaction_high)} / "
+            f"L {_px(row.reaction_low)} / C {_px(row.reaction_close)} "
+            f"(gap {row.gap_pct:+.2f}% · close {row.close_move_pct:+.2f}%) "
             f"| {implied} "
             f"| {breached} |"
         )
