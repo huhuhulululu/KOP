@@ -43,11 +43,18 @@
 - **买卖价差**：宽价差把 credit/width 吃掉。门槛写死 8%。
 - **路径命中**：同一 6 次 NVDA 财报，理论短边 ±1× implied。2025-02 到 2026-05，短铁秃鹰帮到 **2/6**。这个数会挡短波动，哪怕现场 implied 看起来很贵。
 
-## 今天（2026-08-26，事件日）现场不该过的门
+## 今天（2026-08-26，事件日）现场打出来的门
 
-事件日 `days_before=0` 已经空仓。即使不是事件日，当时测到的其它硬门也过不了：
+`kop snapshot` 实打实拉了 CBOE + Yahoo + FRED。选择：`do_nothing` / `stand_down_too_close_t_minus_0`。`filled=false`。
 
-- iv30 range rank ≈ 42.7 < 50
-- path_hit_rate = 2/6 ≈ 0.33 < 0.50
+过的 GATE：implied/hist 1.83×、VRP 1.25、期限 +58.5 vol、价差 2.4%、credit/width 0.258、max loss $373.60、ATM OI 48k。
 
-implied/hist、VRP、期限、价差、credit/width 当时是过的。过的门不能把没过的门洗绿。
+没过的 GATE（并列，过的洗不绿）：
+
+- `days_before=0`（事件日）
+- iv30 range rank **42.7 < 50**
+- path_hit_rate **2/6 = 0.33 < 0.50**
+
+INFO：VIX 15.21，1y 百分位约 11%。指数很安静，**不是**开门理由。25Δ RR ≈ −5 vol（事件周 call 偏斜）。
+
+反向路径 4/6 过长波动的路径门，但 implied 1.83× 并不便宜，所以也不买波动。
