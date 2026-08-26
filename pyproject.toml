@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kop"
+version = "0.1.0"
+description = "Known-event listed-options paper tape. Not Kalshi."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+kop = "kop.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["kop*"]
