@@ -18,7 +18,7 @@ GitHub 仓库简介如果还写着 `kalshi options`，那是开仓占位，**以
 - 不要 Kalshi / Polymarket 二元合约冒充期权。
 - 不要说「每笔赚 20%」。计分可以留 `EV = p·b − (1−p)`，兑现看往返和路径。
 - 不要和 BTCHOUR 共库、共 sqlite、共 loop。
-- 没有人工带子之前，不要开自动下单（纸盘也不要乱扫链下单）。
+- 不要等人贴单。带子 = 公开配方 + 回放。自动下单仍然关着。
 
 ## 第一期 playbook
 
@@ -30,11 +30,13 @@ GitHub 仓库简介如果还写着 `kalshi options`，那是开仓占位，**以
 python3 -m kop calendar
 python3 -m kop chain
 python3 -m kop observe      # 拉链、记账、给门，不成交
+python3 -m kop recipes      # 公开单腿/多腿目录
+python3 -m kop select       # 按公开规则选配方，不成交
 python3 -m kop replay       # 最近 6 次 NVDA 财报现货路径
 python3 -m kop tape
-python3 -m kop sweep        # 同一段历史上的买跨 / 买 call / 什么都不做
+python3 -m kop sweep        # 同一段历史上给每条配方打路径分
 python3 -m kop status
-python3 -m kop paper-once   # 拒绝：没有带子，AUTO_TRADE=false
+python3 -m kop paper-once   # 选出配方；AUTO_TRADE=false 所以不成交
 python3 -m unittest discover -s tests -q
 ```
 
@@ -50,6 +52,7 @@ python3 -m unittest discover -s tests -q
 | 纸盘账本 | `data/kop.sqlite`（不是 btchour.sqlite） |
 
 没有历史期权链 API key。所以回放表能填现货路径，**不能编权利金**。
+公开配方的对照打的是路径是否帮论文，见 `catalog/public/structures.md`。
 
 ## 和 BTCHOUR 的关系
 

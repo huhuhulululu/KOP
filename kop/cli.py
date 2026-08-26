@@ -16,7 +16,9 @@ from kop.paper.exercise import assignment_notes
 from kop.paper.risk import long_call_fill, long_straddle_fill, pick_expiration, select_iron_condor
 from kop.playbook import decide, trading_days_before
 from kop.research import persist, replay
+from kop.recipes import RECIPES, allowed_paper, forbidden
 from kop.scoring import edge
+from kop.selector import historical_median_abs, select_recipe
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -28,9 +30,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("observe", help="record a live observation; no order")
     sub.add_parser("replay", help="replay last 6 completed NVDA earnings")
     sub.add_parser("tape", help="print research tape")
-    sub.add_parser("sweep", help="contrast variants on the same events")
+    sub.add_parser("sweep", help="path-score public recipes on the same events")
+    sub.add_parser("recipes", help="print the public recipe catalog")
+    sub.add_parser("select", help="pick a recipe from public rules; no order")
     sub.add_parser("status", help="ledger + gate status")
-    sub.add_parser("paper-once", help="one paper pass (refuses without tape)")
+    sub.add_parser("paper-once", help="select a recipe; refuse to fill unless AUTO_TRADE")
     args = parser.parse_args(argv)
     handlers = {
         "calendar": cmd_calendar,
@@ -39,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
         "replay": cmd_replay,
         "tape": cmd_tape,
         "sweep": cmd_sweep,
+        "recipes": cmd_recipes,
+        "select": cmd_select,
         "status": cmd_status,
         "paper-once": cmd_paper_once,
     }
@@ -206,7 +212,7 @@ def cmd_sweep() -> int:
     from kop.models import TapeRow
     from datetime import date as date_cls
 
-    sweep = []
+    models = []
     for row in rows:
         model = TapeRow(
             event_key=row["event_key"],
@@ -245,8 +251,70 @@ def cmd_sweep() -> int:
             fill_status=row["fill_status"],
             notes=row["notes"],
         )
-        sweep.append(contrast_for_row(model))
+        models.append(model)
+    sweep = [contrast_for_row(model, models) for model in models]
     print(json.dumps(sweep, indent=2))
+    return 0
+
+
+def cmd_recipes() -> int:
+    print(
+        json.dumps(
+            {
+                "allowed": [item.as_dict() for item in allowed_paper()],
+                "forbidden": [item.as_dict() for item in forbidden()],
+                "all": [item.as_dict() for item in RECIPES],
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def _hist_and_implied(under=None, quotes=None) -> tuple[float | None, float | None, str | None]:
+    rows = replay()
+    hist = historical_median_abs([row.close_move_pct for row in rows if row.close_move_pct is not None])
+    implied = None
+    source = None
+    if under is not None and quotes is not None:
+        expiry = pick_expiration(quotes, date.fromisoformat(under.asof[:10]) if under.asof else datetime.now(timezone.utc).date())
+        pair = atm_quotes(quotes, expiry, under.spot) if expiry else None
+        if pair:
+            implied = straddle_implied_move_pct(pair[0], pair[1], under.spot, side="sell")
+            source = "cboe_atm_straddle_bid"
+    return hist, implied, source
+
+
+def cmd_select() -> int:
+    today = datetime.now(timezone.utc).date()
+    bars = fetch_bars(SYMBOL)
+    event = next_event(SYMBOL, today)
+    try:
+        under, quotes = _live_under_chain()
+    except RuntimeError as exc:
+        print(json.dumps({"error": str(exc)}))
+        return 1
+    hist, implied, source = _hist_and_implied(under, quotes)
+    days_before = trading_days_before(event, today, bars) if event else None
+    iv_rank = iv30_range_rank(under)
+    chosen, why, details = select_recipe(
+        days_before=days_before,
+        iv_rank=iv_rank,
+        implied_move_pct=implied,
+        hist_abs_median=hist,
+    )
+    details["implied_source"] = source
+    print(
+        json.dumps(
+            {
+                "selected": chosen.as_dict(),
+                "reason": why,
+                "details": details,
+                "filled": False,
+            },
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -305,6 +373,21 @@ def cmd_paper_once() -> int:
         under, _quotes = _live_under_chain()
     except RuntimeError:
         under = None
-    result = paper_once(store, asof=today, event=event, bars=bars, under=under)
+    hist = implied = None
+    if under is not None:
+        try:
+            _u, quotes = _live_under_chain()
+            hist, implied, _src = _hist_and_implied(_u, quotes)
+        except RuntimeError:
+            hist, implied, _src = _hist_and_implied()
+    result = paper_once(
+        store,
+        asof=today,
+        event=event,
+        bars=bars,
+        under=under,
+        implied_move_pct=implied,
+        hist_abs_median=hist,
+    )
     print(json.dumps(result, indent=2))
     return 0 if not result["allow"] or not result["filled"] else 0

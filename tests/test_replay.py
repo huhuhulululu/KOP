@@ -39,9 +39,10 @@ class ReplayTests(unittest.TestCase):
         row = replay("NVDA", asof=date(2026, 8, 26), bars=bars)[0]
         sweep = contrast_for_row(row)
         self.assertEqual(sweep["do_nothing"]["pnl_usd"], 0.0)
-        self.assertEqual(sweep["long_call"]["status"], "unscored_missing_quotes")
-        self.assertEqual(sweep["long_straddle"]["status"], "unscored_missing_quotes")
-        self.assertEqual(sweep["short_iron_condor"]["status"], "unscored_missing_quotes")
+        self.assertIn("recipes", sweep)
+        self.assertEqual(sweep["fills"], "missing_quotes")
+        self.assertIn("short_iron_condor", sweep["recipes"])
+        self.assertIn("long_call", sweep["recipes"])
 
 
 if __name__ == "__main__":

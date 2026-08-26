@@ -37,12 +37,23 @@ NAKED_SHORTS = False
 MARGIN_NAKED = False
 ALLOW_LIVE = False
 AUTO_TRADE = False
-MIN_TAPE_SAMPLES_FOR_LOOP = 4
+# Human fills are optional overlays. Public recipes + path replay are the tape.
+REQUIRE_HUMAN_TAPE = False
+MIN_TAPE_SAMPLES_FOR_LOOP = 0
+MIN_PUBLIC_REPLAY_EVENTS = 4
+CATALOG_PUBLIC = ROOT / "catalog" / "public"
 
 CONTRAST_VARIANTS = (
     "short_iron_condor",
+    "short_iron_fly",
+    "put_credit_spread",
+    "call_credit_spread",
+    "reverse_iron_condor",
     "long_straddle",
+    "long_strangle",
     "long_call",
+    "long_put",
+    "calendar_short_front",
     "do_nothing",
 )
 

@@ -16,6 +16,7 @@ from kop.config import (
     IV_PERCENTILE_MIN_SAMPLES,
     MAX_LOSS_USD,
     MIN_TAPE_SAMPLES_FOR_LOOP,
+    REQUIRE_HUMAN_TAPE,
     PLAYBOOK,
     SYMBOL,
     STRUCTURE,
@@ -116,7 +117,7 @@ def decide(
     details.update(iv_details)
     if not ok:
         return Decision(False, reason, PLAYBOOK, details)
-    if countable_tape < MIN_TAPE_SAMPLES_FOR_LOOP:
+    if REQUIRE_HUMAN_TAPE and countable_tape < MIN_TAPE_SAMPLES_FOR_LOOP:
         return Decision(
             False,
             f"no_human_tape_{countable_tape}_of_{MIN_TAPE_SAMPLES_FOR_LOOP}",

@@ -13,8 +13,8 @@
    - 没有 Kalshi，也不要去接。
 2. **第一期只做** NVDA 财报、定义风险短波动（`nvda_earnings_defined_short_vol`）。
    观察名单里还有 TSLA / AAPL / MSFT / AMZN，不要并行写策略。
-3. **金带子**：主人还没有把自己的历史成交贴进来。回放了最近 6 次 NVDA 财报的现货路径，权利金进/出是 `missing_quotes`。
-   这些行 **不算** 可重复人工样本。
+3. **带子**：不等人。公开配方在 `catalog/public/structures.md`，回放在 `catalog/research/nvda_recipe_sweep.md`。
+   人工成交是可选叠加，不是开门条件。`REQUIRE_HUMAN_TAPE = false`。
 4. **单笔风险**：纸盘上限 **$500**。不允许保证金裸卖权。`NAKED_SHORTS = false`。
 5. **不要改 BTCHOUR，不要接 Kalshi。** 分仓、分 sqlite（`data/kop.sqlite`）、分 loop。
 
@@ -32,9 +32,10 @@
 - 不要用中间价补历史权利金。
 - 不要把 VolRadar / ORATS 的 crush 赢率写成「策略已验证」。
 - 不要把 BTCHOUR 的 11/5/−3.03 或 25¢ coupon 当达成标准。
-- 没有至少 4 笔 `human` / `recorded_bid_ask` 之前，不要开策略循环。
+- 不要把路径「helped」写成已经赚到钱。
+- 不要把 X 上的方向帖当配方。
 
-## 有历史成交时
+## 下一件机器自己做
 
-把当时买卖价（不要中间价）记进账本，`fill_status=human`，字段对齐 `catalog/research/nvda_earnings_tape.md`。
-再谈纸盘循环。再谈第二只股票。
+`kop select` 每个交易日拉链、用公开规则选配方。`AUTO_TRADE` 仍是 false，所以只记账不扫单。
+再谈第二只股票。

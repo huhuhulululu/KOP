@@ -24,7 +24,11 @@ from kop.config import (
 from kop.ledger import Store
 from kop.market.yahoo import bar_map, fetch_bars, trading_days
 from kop.models import Bar, EarningsEvent, TapeRow
+from kop.path_score import score_event
 from kop.playbook import entry_date_for, exit_date_for
+from kop.recipes import allowed_paper
+from kop.selector import historical_median_abs
+from kop.selector import select_recipe
 
 
 def _px(value: float | None) -> str:
@@ -145,27 +149,18 @@ def build_row(event: EarningsEvent, bars: list[Bar]) -> TapeRow:
     )
 
 
-def contrast_for_row(row: TapeRow) -> dict:
-    """Same event, four variants. Option variants stay unscored without quotes."""
-    do_nothing = {"variant": "do_nothing", "pnl_usd": 0.0, "status": "scored"}
-    missing = {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": None,
-        "note": "need bid/ask chain on entry and exit dates",
-    }
-    path_note = None
-    if row.vendor_implied_move_pct is not None and row.close_move_pct is not None:
-        path_note = {
-            "close_move_pct": row.close_move_pct,
-            "vendor_implied_move_pct": row.vendor_implied_move_pct,
-            "close_beyond_implied": abs(row.close_move_pct) > row.vendor_implied_move_pct,
-        }
+def contrast_for_row(row: TapeRow, peers: list[TapeRow] | None = None) -> dict:
+    """Same event, every paper-allowed recipe. Dollar P&L stays empty without quotes."""
+    peers = peers or [row]
+    scored = score_event(row, peers)
+    by_id = {item["recipe"]: item for item in scored["scores"]}
     return {
         "event": row.event_key,
-        "short_iron_condor": {**missing, "variant": "short_iron_condor", "path": path_note},
-        "long_straddle": {**missing, "variant": "long_straddle"},
-        "long_call": {**missing, "variant": "long_call"},
-        "do_nothing": do_nothing,
+        "implied_pct": scored["implied_pct"],
+        "implied_source": scored["implied_source"],
+        "fills": "missing_quotes",
+        "recipes": by_id,
+        "do_nothing": {"variant": "do_nothing", "pnl_usd": 0.0, "status": "scored"},
     }
 
 
@@ -184,20 +179,41 @@ def persist(rows: list[TapeRow], store: Store | None = None) -> dict:
         store.upsert_tape(row)
     RESEARCH_DIR.mkdir(parents=True, exist_ok=True)
     CATALOG_RESEARCH.mkdir(parents=True, exist_ok=True)
+    contrast = [contrast_for_row(row, rows) for row in rows]
+    moves = [row.close_move_pct for row in rows if row.close_move_pct is not None]
+    hist_med = historical_median_abs(moves)
+    implieds = [c["implied_pct"] for c in contrast if c["implied_pct"] is not None]
+    live_implied = implieds[-1] if implieds else None
+    chosen, why, select_details = select_recipe(
+        days_before=3,
+        iv_rank=None,
+        implied_move_pct=live_implied,
+        hist_abs_median=hist_med,
+    )
     payload = {
         "playbook": PLAYBOOK,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "countable_for_loop": store.countable_tape(),
         "credit_take_fraction": CREDIT_TAKE_FRACTION,
+        "hist_abs_median": hist_med,
+        "selector_on_tape": {"recipe": chosen.id, "reason": why, "details": select_details},
         "rows": [row.as_dict() for row in rows],
-        "contrast": [contrast_for_row(row) for row in rows],
+        "contrast": contrast,
     }
     json_path = RESEARCH_DIR / "nvda_earnings_tape.json"
     md_path = CATALOG_RESEARCH / "nvda_earnings_tape.md"
+    sweep_path = CATALOG_RESEARCH / "nvda_recipe_sweep.md"
     json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     md_path.write_text(render_markdown(rows, payload["contrast"], store.countable_tape()), encoding="utf-8")
+    sweep_path.write_text(render_recipe_sweep(rows, contrast, hist_med), encoding="utf-8")
     store.journal("research", "replay_written", symbol=SYMBOL, payload={"n": len(rows)})
-    return {"json": str(json_path), "markdown": str(md_path), "countable_tape": store.countable_tape(), "n": len(rows)}
+    return {
+        "json": str(json_path),
+        "markdown": str(md_path),
+        "sweep": str(sweep_path),
+        "countable_tape": store.countable_tape(),
+        "n": len(rows),
+    }
 
 
 def render_markdown(rows: list[TapeRow], contrast: list[dict], countable: int) -> str:
@@ -244,9 +260,9 @@ def render_markdown(rows: list[TapeRow], contrast: list[dict], countable: int) -
     )
     for row in rows:
         note = next((c for c in contrast if c["event"] == row.event_key), {})
-        path = (note.get("short_iron_condor") or {}).get("path")
-        breached = path["close_beyond_implied"] if path else "n/a"
-        implied = f"±{row.vendor_implied_move_pct}%" if row.vendor_implied_move_pct is not None else "missing"
+        ic = (note.get("recipes") or {}).get("short_iron_condor") or {}
+        breached = ic.get("path_outcome", "n/a")
+        implied = f"±{note.get('implied_pct')}% ({note.get('implied_source')})" if note.get("implied_pct") is not None else "missing"
         # recover reaction prints from notes is ugly; keep implied/breach only here
         lines.append(
             f"| {row.fiscal_label} {row.announce_date} "
@@ -261,22 +277,24 @@ def render_markdown(rows: list[TapeRow], contrast: list[dict], countable: int) -
     lines.extend(
         [
             "",
-            "## 对照 sweep（同一段历史）",
+            "## 对照 sweep（同一段历史，公开配方）",
             "",
-            "买跨、买 call、什么都不做，必须和短铁秃鹰跑同一 6 次事件。",
-            "没有买卖价就没有权利金数字。不要用中间价补。",
+            "单腿 / 多腿必须和短铁秃鹰跑同一 6 次事件。没有买卖价就没有权利金数字。",
+            "这里打的是**路径是否帮论文**，不是费后盈亏。完整表见 `nvda_recipe_sweep.md`。",
             "",
-            "| 事件 | 短铁秃鹰 | 买跨 | 买 call | 什么都不做 |",
-            "| --- | --- | --- | --- | ---: |",
+            "| 事件 | 短铁秃鹰 | 反向铁秃鹰 | 买跨 | 买 call | 什么都不做 |",
+            "| --- | --- | --- | --- | --- | ---: |",
         ]
     )
     for item in contrast:
+        rec = item.get("recipes") or {}
         lines.append(
             f"| {item['event']} "
-            f"| {item['short_iron_condor']['status']} "
-            f"| {item['long_straddle']['status']} "
-            f"| {item['long_call']['status']} "
-            f"| {item['do_nothing']['pnl_usd']} |"
+            f"| {_thesis(rec.get('short_iron_condor'))} "
+            f"| {_thesis(rec.get('reverse_iron_condor'))} "
+            f"| {_thesis(rec.get('long_straddle'))} "
+            f"| {_thesis(rec.get('long_call'))} "
+            f"| 0 |"
         )
     lines.extend(
         [
@@ -284,11 +302,37 @@ def render_markdown(rows: list[TapeRow], contrast: list[dict], countable: int) -
             "## 这一轮不能说的话",
             "",
             "- 不能说「每笔赚 20%」。连一笔费后往返都还没记上。",
-            "- 不能把 vendor crush 赢率当成 playbook 已验证。",
-            "- 不能把 BTCHOUR 小时盘 clip 达成标准搬过来。",
-            "",
-            "下一步：有人把当时链上的买卖价记进账本，状态变成 `human` 或 `recorded_bid_ask` 之后，才写循环。",
+            "- 不能把路径「帮到论文」当成已验证成交。",
+            "- 不要等人贴单。公开配方 + 回放就是带子。",
             "",
         ]
     )
+    return "\n".join(lines) + "\n"
+
+
+def _thesis(score: dict | None) -> str:
+    if not score:
+        return "—"
+    return score.get("thesis") or score.get("path_outcome") or score.get("status") or "—"
+
+
+def render_recipe_sweep(rows: list[TapeRow], contrast: list[dict], hist_med: float | None) -> str:
+    names = [item.id for item in allowed_paper()]
+    lines = [
+        "# NVDA 公开配方路径 sweep",
+        "",
+        "不等人。同一 6 次财报，每条公开配方看反应日高低有没有打到理论短边。",
+        "权利金仍空着。`helped` / `hurt` 是论文，不是美元。",
+        f"历史 |收盘变动| 中位数：{hist_med:.2f}%。" if hist_med is not None else "历史中位数：missing",
+        "",
+        "| 事件 | implied | " + " | ".join(names) + " |",
+        "| --- | --- | " + " | ".join(["---"] * len(names)) + " |",
+    ]
+    for item in contrast:
+        rec = item.get("recipes") or {}
+        cells = [_thesis(rec.get(name)) for name in names]
+        implied = item.get("implied_pct")
+        src = item.get("implied_source")
+        lines.append(f"| {item['event']} | {implied} ({src}) | " + " | ".join(cells) + " |")
+    lines.extend(["", "配方目录：`catalog/public/structures.md`。", ""])
     return "\n".join(lines) + "\n"

@@ -53,12 +53,12 @@ class PlaybookTests(unittest.TestCase):
         self.assertFalse(d.allow)
         self.assertIn("iv30_range_rank", d.reason)
 
-    def test_no_tape_rejected_even_if_other_gates_pass(self):
+    def test_human_tape_not_required(self):
         d = decide(symbol=SYMBOL, asof=date(2026, 8, 21), event=self.event, bars=self.bars, under=self.under, iv_history=[], countable_tape=0, auto=True)
-        self.assertFalse(d.allow)
-        self.assertTrue(d.reason.startswith("no_human_tape"))
+        self.assertTrue(d.allow)
+        self.assertEqual(d.reason, "gates_open")
 
-    def test_auto_disabled_after_tape(self):
+    def test_auto_disabled_still_blocks_fill(self):
         d = decide(symbol=SYMBOL, asof=date(2026, 8, 21), event=self.event, bars=self.bars, under=self.under, iv_history=[], countable_tape=4, auto=False)
         self.assertEqual(d.reason, "auto_trade_disabled")
         self.assertEqual(d.playbook, PLAYBOOK)
@@ -70,6 +70,7 @@ class PlaybookTests(unittest.TestCase):
         out = paper_once(store, asof=date(2026, 8, 26), event=self.event, bars=self.bars, under=self.under)
         self.assertFalse(out["allow"])
         self.assertFalse(out["filled"])
+        self.assertEqual(out["selected_recipe"]["id"], "do_nothing")
 
 
 if __name__ == "__main__":
