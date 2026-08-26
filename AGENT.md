@@ -7,9 +7,10 @@
 ## 开仓时必须对齐
 
 1. **数据从哪来**
-   - 现货日线：Yahoo chart（公开）。
-   - 期权链 / IV / delta：CBOE delayed quotes（公开，15 分钟延迟）。有 bid/ask/iv/delta。
-   - 没有券商账号，没有期权交易权限，没有历史期权链。
+   - 现货日线：Yahoo chart（公开）→ HV、交易日、回放路径。
+   - 期权链 / IV / delta / OI：CBOE delayed quotes（公开，15 分钟延迟）。
+   - 指数 vol：CBOE `_VIX` + FRED `VIXCLS`。VIX **不是** 单票短波动门。
+   - 没有券商账号，没有期权交易权限，没有历史期权链。有 `POLYGON_API_KEY` 再拉历史买卖价。
    - 没有 Kalshi，也不要去接。
 2. **第一期只做** NVDA 财报、定义风险短波动（`nvda_earnings_defined_short_vol`）。
    观察名单里还有 TSLA / AAPL / MSFT / AMZN，不要并行写策略。
@@ -22,6 +23,7 @@
 
 - 拉链、拉财报日历、记账：有。
 - 回放 6 次 NVDA 财报：有现货路径，没有历史买卖价，所以没有往返盈亏。
+- 现场 snapshot：CBOE+Yahoo+FRED，GATE/INFO 分开。缺数关。路径 2/6 会挡短波动。
 - playbook + 单测：有。门写死，循环关着。
 - 自动下单：没有。`kop paper-once` 会记拒绝原因然后退出。
 
@@ -37,5 +39,6 @@
 
 ## 下一件机器自己做
 
-`kop select` 每个交易日拉链、用公开规则选配方。`AUTO_TRADE` 仍是 false，所以只记账不扫单。
+`kop snapshot` 每个交易日把每道门打出来。`AUTO_TRADE` 仍是 false。
+有 Polygon/ThetaData key 再补六次事件的权利金。没有 key 不要编。
 再谈第二只股票。

@@ -109,6 +109,16 @@ CREATE TABLE IF NOT EXISTS observations (
     iv30 REAL,
     payload TEXT
 );
+CREATE TABLE IF NOT EXISTS snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    asof TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    event_key TEXT,
+    selected_recipe TEXT,
+    select_reason TEXT,
+    payload TEXT NOT NULL
+);
 """
 
 
@@ -248,6 +258,33 @@ class Store:
         )
         self.conn.commit()
 
+    def record_snapshot(
+        self,
+        *,
+        asof: str,
+        symbol: str,
+        event_key: str | None,
+        selected_recipe: str | None,
+        select_reason: str | None,
+        payload: dict[str, Any],
+    ) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO snapshots (created_at, asof, symbol, event_key, selected_recipe, select_reason, payload)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (_now(), asof, symbol, event_key, selected_recipe, select_reason, json.dumps(payload, default=str)),
+        )
+        self.conn.commit()
+
+    def latest_snapshot(self, symbol: str | None = None) -> sqlite3.Row | None:
+        if symbol:
+            return self.conn.execute(
+                "SELECT * FROM snapshots WHERE symbol = ? ORDER BY id DESC LIMIT 1",
+                (symbol,),
+            ).fetchone()
+        return self.conn.execute("SELECT * FROM snapshots ORDER BY id DESC LIMIT 1").fetchone()
+
     def iv30_history(self, symbol: str) -> list[float]:
         rows = self.conn.execute(
             "SELECT iv30 FROM observations WHERE symbol = ? AND iv30 IS NOT NULL ORDER BY id",
@@ -260,10 +297,12 @@ class Store:
         countable = self.countable_tape()
         journal_n = self.conn.execute("SELECT COUNT(*) FROM journal").fetchone()[0]
         obs_n = self.conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        snap_n = self.conn.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0]
         return {
             "ledger": str(self.path),
             "tape_rows": tape_n,
             "countable_tape": countable,
             "journal": journal_n,
             "observations": obs_n,
+            "snapshots": snap_n,
         }

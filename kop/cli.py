@@ -7,7 +7,9 @@ from datetime import date, datetime, timezone
 from kop.calendar import completed_for_tape, fetch_yahoo_next_earnings, next_event, seeded_events
 from kop.config import PLAYBOOK, SYMBOL, WATCHLIST_OBSERVE_ONLY
 from kop.forbidden import assert_clean_process
+from kop.indicators import path_stats
 from kop.ledger import Store
+from kop.live import collect_live
 from kop.market.cboe import attach_iv_range, fetch_chain, fetch_iv_range
 from kop.market.iv import atm_quotes, iv30_range_rank, straddle_implied_move_pct
 from kop.market.yahoo import fetch_bars
@@ -18,7 +20,7 @@ from kop.playbook import decide, trading_days_before
 from kop.research import persist, replay
 from kop.recipes import RECIPES, allowed_paper, forbidden
 from kop.scoring import edge
-from kop.selector import historical_median_abs, select_recipe
+from kop.selector import select_recipe
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,7 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("tape", help="print research tape")
     sub.add_parser("sweep", help="path-score public recipes on the same events")
     sub.add_parser("recipes", help="print the public recipe catalog")
-    sub.add_parser("select", help="pick a recipe from public rules; no order")
+    sub.add_parser("select", help="pick a recipe from the live snapshot; no order")
+    sub.add_parser("snapshot", help="print every live gate; persist; no order")
     sub.add_parser("status", help="ledger + gate status")
     sub.add_parser("paper-once", help="select a recipe; refuse to fill unless AUTO_TRADE")
     args = parser.parse_args(argv)
@@ -45,6 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         "sweep": cmd_sweep,
         "recipes": cmd_recipes,
         "select": cmd_select,
+        "snapshot": cmd_snapshot,
         "status": cmd_status,
         "paper-once": cmd_paper_once,
     }
@@ -116,8 +120,8 @@ def _chain_summary(under, quotes, expiry) -> dict:
 
 def cmd_observe() -> int:
     store = Store()
-    under, quotes = _live_under_chain()
-    asof = date.fromisoformat(under.asof[:10]) if under.asof else datetime.now(timezone.utc).date()
+    live = collect_live(store)
+    under, quotes, asof = live.under, live.quotes, live.asof
     expiry = pick_expiration(quotes, asof)
     summary = _chain_summary(under, quotes, expiry)
     structure = None
@@ -132,19 +136,24 @@ def cmd_observe() -> int:
         err = str(exc)
     pair = atm_quotes(quotes, expiry, under.spot) if expiry else None
     shorts = [pair[0], pair[1]] if pair else []
-    bars = fetch_bars(SYMBOL)
-    event = next_event(SYMBOL, asof)
+    chosen, why, select_details = select_recipe(live.snapshot)
     decision = decide(
         symbol=SYMBOL,
         asof=asof,
-        event=event,
-        bars=bars,
+        event=live.event,
+        bars=live.bars,
         under=under,
         iv_history=store.iv30_history(SYMBOL),
         countable_tape=store.countable_tape(),
+        snapshot=live.snapshot,
     )
     payload = {
         "summary": summary,
+        "snapshot": live.snapshot.as_dict(),
+        "gates": [row.as_dict() for row in live.snapshot.gate_table()],
+        "selected": chosen.as_dict(),
+        "select_reason": why,
+        "select_details": select_details,
         "decision": {"allow": decision.allow, "reason": decision.reason, "details": decision.details},
         "proposed_iron_condor": _structure_view(structure) if structure else None,
         "contrast_live": {
@@ -157,7 +166,8 @@ def cmd_observe() -> int:
         "scoring_example": edge(0.55, 0.4).as_dict(),
     }
     store.record_observation(SYMBOL, under.spot, under.iv30, payload)
-    store.journal("observe", decision.reason, symbol=SYMBOL, event_key=event.key if event else None, payload=payload["decision"])
+    _persist_select(store, live, chosen.id, why, payload)
+    store.journal("observe", decision.reason, symbol=SYMBOL, event_key=live.event.key if live.event else None, payload=payload["decision"])
     print(json.dumps(payload, indent=2, default=str))
     return 0
 
@@ -253,7 +263,7 @@ def cmd_sweep() -> int:
         )
         models.append(model)
     sweep = [contrast_for_row(model, models) for model in models]
-    print(json.dumps(sweep, indent=2))
+    print(json.dumps({"path_stats": path_stats(models), "events": sweep}, indent=2))
     return 0
 
 
@@ -271,51 +281,41 @@ def cmd_recipes() -> int:
     return 0
 
 
-def _hist_and_implied(under=None, quotes=None) -> tuple[float | None, float | None, str | None]:
-    rows = replay()
-    hist = historical_median_abs([row.close_move_pct for row in rows if row.close_move_pct is not None])
-    implied = None
-    source = None
-    if under is not None and quotes is not None:
-        expiry = pick_expiration(quotes, date.fromisoformat(under.asof[:10]) if under.asof else datetime.now(timezone.utc).date())
-        pair = atm_quotes(quotes, expiry, under.spot) if expiry else None
-        if pair:
-            implied = straddle_implied_move_pct(pair[0], pair[1], under.spot, side="sell")
-            source = "cboe_atm_straddle_bid"
-    return hist, implied, source
+def _persist_select(store: Store, live, recipe_id: str, reason: str, payload: dict) -> None:
+    store.record_snapshot(
+        asof=live.asof.isoformat(),
+        symbol=SYMBOL,
+        event_key=live.event.key if live.event else None,
+        selected_recipe=recipe_id,
+        select_reason=reason,
+        payload=payload,
+    )
 
 
-def cmd_select() -> int:
-    today = datetime.now(timezone.utc).date()
-    bars = fetch_bars(SYMBOL)
-    event = next_event(SYMBOL, today)
+def cmd_snapshot() -> int:
+    store = Store()
     try:
-        under, quotes = _live_under_chain()
+        live = collect_live(store)
     except RuntimeError as exc:
         print(json.dumps({"error": str(exc)}))
         return 1
-    hist, implied, source = _hist_and_implied(under, quotes)
-    days_before = trading_days_before(event, today, bars) if event else None
-    iv_rank = iv30_range_rank(under)
-    chosen, why, details = select_recipe(
-        days_before=days_before,
-        iv_rank=iv_rank,
-        implied_move_pct=implied,
-        hist_abs_median=hist,
-    )
-    details["implied_source"] = source
-    print(
-        json.dumps(
-            {
-                "selected": chosen.as_dict(),
-                "reason": why,
-                "details": details,
-                "filled": False,
-            },
-            indent=2,
-        )
-    )
+    chosen, why, details = select_recipe(live.snapshot)
+    payload = {
+        "snapshot": live.snapshot.as_dict(),
+        "gates": [row.as_dict() for row in live.snapshot.gate_table()],
+        "selected": chosen.as_dict(),
+        "reason": why,
+        "details": details,
+        "filled": False,
+    }
+    _persist_select(store, live, chosen.id, why, payload)
+    store.journal("snapshot", why, symbol=SYMBOL, event_key=live.event.key if live.event else None, payload=details)
+    print(json.dumps(payload, indent=2, default=str))
     return 0
+
+
+def cmd_select() -> int:
+    return cmd_snapshot()
 
 
 def json_loads(raw):
@@ -328,37 +328,45 @@ def json_loads(raw):
 
 def cmd_status() -> int:
     store = Store()
-    today = datetime.now(timezone.utc).date()
-    bars = fetch_bars(SYMBOL)
-    event = next_event(SYMBOL, today)
+    live_error = None
+    live = None
     try:
-        under, _quotes = _live_under_chain()
+        live = collect_live(store)
     except RuntimeError as exc:
-        under = None
         live_error = str(exc)
+    decision = None
+    if live is not None:
+        decision = decide(
+            symbol=SYMBOL,
+            asof=live.asof,
+            event=live.event,
+            bars=live.bars,
+            under=live.under,
+            iv_history=store.iv30_history(SYMBOL),
+            countable_tape=store.countable_tape(),
+            snapshot=live.snapshot,
+        )
+        chosen, why, details = select_recipe(live.snapshot)
     else:
-        live_error = None
-    days_before = trading_days_before(event, today, bars) if event else None
-    decision = decide(
-        symbol=SYMBOL,
-        asof=today,
-        event=event,
-        bars=bars,
-        under=under,
-        iv_history=store.iv30_history(SYMBOL),
-        countable_tape=store.countable_tape(),
-    )
+        chosen = why = details = None
+    latest = store.latest_snapshot(SYMBOL)
     print(
         json.dumps(
             {
                 "ledger": store.summary(),
-                "next_event": event.key if event else None,
-                "days_before": days_before,
+                "next_event": live.event.key if live and live.event else None,
+                "days_before": live.snapshot.days_before if live else None,
                 "live_error": live_error,
-                "decision": {"allow": decision.allow, "reason": decision.reason, "details": decision.details},
+                "decision": {"allow": decision.allow, "reason": decision.reason, "details": decision.details} if decision else None,
+                "selected": chosen.as_dict() if chosen else None,
+                "select_reason": why,
+                "select_details": details,
+                "gates": [row.as_dict() for row in live.snapshot.gate_table()] if live else None,
+                "latest_snapshot_id": latest["id"] if latest else None,
                 "loop": "closed",
             },
             indent=2,
+            default=str,
         )
     )
     return 0
@@ -366,28 +374,23 @@ def cmd_status() -> int:
 
 def cmd_paper_once() -> int:
     store = Store()
-    today = datetime.now(timezone.utc).date()
-    bars = fetch_bars(SYMBOL)
-    event = next_event(SYMBOL, today)
     try:
-        under, _quotes = _live_under_chain()
+        live = collect_live(store)
     except RuntimeError:
-        under = None
-    hist = implied = None
-    if under is not None:
-        try:
-            _u, quotes = _live_under_chain()
-            hist, implied, _src = _hist_and_implied(_u, quotes)
-        except RuntimeError:
-            hist, implied, _src = _hist_and_implied()
+        today = datetime.now(timezone.utc).date()
+        bars = fetch_bars(SYMBOL)
+        event = next_event(SYMBOL, today)
+        result = paper_once(store, asof=today, event=event, bars=bars, under=None)
+        print(json.dumps(result, indent=2, default=str))
+        return 0
     result = paper_once(
         store,
-        asof=today,
-        event=event,
-        bars=bars,
-        under=under,
-        implied_move_pct=implied,
-        hist_abs_median=hist,
+        asof=live.asof,
+        event=live.event,
+        bars=live.bars,
+        under=live.under,
+        snapshot=live.snapshot,
     )
-    print(json.dumps(result, indent=2))
-    return 0 if not result["allow"] or not result["filled"] else 0
+    _persist_select(store, live, result["selected_recipe"]["id"], result["select_reason"], result)
+    print(json.dumps(result, indent=2, default=str))
+    return 0

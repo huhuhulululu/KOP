@@ -6,11 +6,13 @@
 
 ## 怎么选（写死）
 
-1. 事件日或 T−1：空仓。持有过公告的结构不要当天才开。
-2. IV rank / CBOE iv30 range rank < 50：不卖波动。
-3. 现场 ATM 跨 **卖侧 bid** implied ≥ 1.2 × 近 6 次 |收盘变动| 中位数，且 IV 够：短铁秃鹰。
-4. implied < 1.0 × 历史中位数：反向铁秃鹰（定义风险长波动），不是裸 call。
-5. implied 接近公平：空仓。
+完整门见表 `catalog/public/indicators.md`。缺一门短波动输入就空仓。
+
+1. 事件日或 T−1，或窗口不在 T−2–5：空仓。
+2. 短波动要 **同时** 过：IV rank≥50、implied/hist≥1.2、VRP≥1、期限斜率≥15vol、ATM 价差≤8%、IC credit/width≥0.20、max loss≤$500、ATM OI≥500、路径 helped≥50%（n≥4）。
+3. 短波动不过、但 implied/hist<1.0 且价差/OI/反向路径过：反向铁秃鹰。
+4. 其余：空仓。
+5. VIX 百分位不是门。
 6. 永远不选裸跨、裸跨式、玉蜥蜴。
 
 tastylive 把期望波动写成 ATM 跨 × 0.85。本仓现场 implied 用 **straddle bid / spot**（卖得走的那一侧），不用中间价。

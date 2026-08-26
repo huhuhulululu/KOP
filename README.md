@@ -29,9 +29,10 @@ GitHub 仓库简介如果还写着 `kalshi options`，那是开仓占位，**以
 ```bash
 python3 -m kop calendar
 python3 -m kop chain
+python3 -m kop snapshot     # 每道门的值 / GATE|INFO / 过没过；不成交
 python3 -m kop observe      # 拉链、记账、给门，不成交
 python3 -m kop recipes      # 公开单腿/多腿目录
-python3 -m kop select       # 按公开规则选配方，不成交
+python3 -m kop select       # 等同 snapshot：现场规则选配方，不成交
 python3 -m kop replay       # 最近 6 次 NVDA 财报现货路径
 python3 -m kop tape
 python3 -m kop sweep        # 同一段历史上给每条配方打路径分
@@ -46,13 +47,18 @@ python3 -m unittest discover -s tests -q
 
 | 需要 | 现在用的 |
 | --- | --- |
-| 期权链 + 报价 | CBOE delayed（bid/ask/IV/delta） |
+| 期权链 + 报价 | CBOE delayed（bid/ask/IV/delta/OI） |
+| 实现波动 / 日历 | Yahoo chart 日线 → HV20/HV60、交易日 |
+| 指数波动 | CBOE `_VIX` + FRED `VIXCLS`（INFO，不挡单） |
 | 财报日历 | 种子日期 + Yahoo calendarEvents |
-| Greeks / IV | CBOE；IV rank 先用 iv30 相对 1 年高低，样本够了再改百分位 |
+| IV rank | CBOE iv30 相对 1 年高低；样本够了改百分位 |
 | 纸盘账本 | `data/kop.sqlite`（不是 btchour.sqlite） |
 
 没有历史期权链 API key。所以回放表能填现货路径，**不能编权利金**。
 公开配方的对照打的是路径是否帮论文，见 `catalog/public/structures.md`。
+每道门的公式和源见 `catalog/public/indicators.md`，接口清单见 `catalog/public/data_sources.md`。
+
+值得付的：Polygon/Massive options（约 $29–79/月）或 ThetaData，用来补六次财报当天的 bid/ask。设 `POLYGON_API_KEY` 才会去拉。
 
 ## 和 BTCHOUR 的关系
 

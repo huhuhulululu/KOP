@@ -24,6 +24,7 @@ from kop.config import (
 from kop.market.iv import iv30_range_rank, iv_percentile
 from kop.market.yahoo import offset_trading_day, trading_days
 from kop.models import Bar, Decision, EarningsEvent, UnderlyingQuote
+from kop.indicators import Snapshot
 
 
 def entry_date_for(event: EarningsEvent, bars: list[Bar], days_before: int = DEFAULT_ENTRY_DAYS_BEFORE) -> date:
@@ -84,6 +85,7 @@ def decide(
     countable_tape: int,
     want_structure: str = STRUCTURE,
     auto: bool = AUTO_TRADE,
+    snapshot: Snapshot | None = None,
 ) -> Decision:
     details: dict = {
         "playbook": PLAYBOOK,
@@ -117,6 +119,12 @@ def decide(
     details.update(iv_details)
     if not ok:
         return Decision(False, reason, PLAYBOOK, details)
+    if snapshot is not None:
+        blockers = snapshot.short_vol_blockers()
+        details["short_vol_blockers"] = blockers
+        details["path_hit_rate"] = snapshot.path_hit_rate
+        if blockers:
+            return Decision(False, blockers[0], PLAYBOOK, details)
     if REQUIRE_HUMAN_TAPE and countable_tape < MIN_TAPE_SAMPLES_FOR_LOOP:
         return Decision(
             False,

@@ -72,6 +72,21 @@ class PlaybookTests(unittest.TestCase):
         self.assertFalse(out["filled"])
         self.assertEqual(out["selected_recipe"]["id"], "do_nothing")
 
+    def test_sparse_t_minus_3_fail_closed_no_iron_condor(self):
+        store = Store(path=__import__("pathlib").Path("/tmp/kop-test-paper-sparse.sqlite"))
+        out = paper_once(
+            store,
+            asof=date(2026, 8, 21),
+            event=self.event,
+            bars=self.bars,
+            under=self.under,
+            implied_move_pct=6.0,
+            hist_abs_median=3.0,
+        )
+        self.assertFalse(out["filled"])
+        self.assertEqual(out["selected_recipe"]["id"], "do_nothing")
+        self.assertTrue(out["select_details"]["short_vol_blockers"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,8 +27,8 @@ from kop.models import Bar, EarningsEvent, TapeRow
 from kop.path_score import score_event
 from kop.playbook import entry_date_for, exit_date_for
 from kop.recipes import allowed_paper
+from kop.indicators import path_stats
 from kop.selector import historical_median_abs
-from kop.selector import select_recipe
 
 
 def _px(value: float | None) -> str:
@@ -182,21 +182,20 @@ def persist(rows: list[TapeRow], store: Store | None = None) -> dict:
     contrast = [contrast_for_row(row, rows) for row in rows]
     moves = [row.close_move_pct for row in rows if row.close_move_pct is not None]
     hist_med = historical_median_abs(moves)
-    implieds = [c["implied_pct"] for c in contrast if c["implied_pct"] is not None]
-    live_implied = implieds[-1] if implieds else None
-    chosen, why, select_details = select_recipe(
-        days_before=3,
-        iv_rank=None,
-        implied_move_pct=live_implied,
-        hist_abs_median=hist_med,
-    )
+    stats = path_stats(rows)
     payload = {
         "playbook": PLAYBOOK,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "countable_for_loop": store.countable_tape(),
         "credit_take_fraction": CREDIT_TAKE_FRACTION,
         "hist_abs_median": hist_med,
-        "selector_on_tape": {"recipe": chosen.id, "reason": why, "details": select_details},
+        "path_stats": stats,
+        "selector_on_tape": {
+            "note": "replay has no live chain; run kop snapshot / kop select for gates",
+            "path_hit_rate": stats["path_hit_rate"],
+            "reverse_path_hit_rate": stats["reverse_path_hit_rate"],
+            "path_n": stats["path_n"],
+        },
         "rows": [row.as_dict() for row in rows],
         "contrast": contrast,
     }
