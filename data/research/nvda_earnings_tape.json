@@ -1,8 +1,22 @@
 {
   "playbook": "nvda_earnings_defined_short_vol",
-  "generated_at": "2026-08-26T22:32:52.792234+00:00",
+  "generated_at": "2026-08-26T22:41:49.207491+00:00",
   "countable_for_loop": 0,
   "credit_take_fraction": 0.5,
+  "hist_abs_median": 3.2007501539364225,
+  "selector_on_tape": {
+    "recipe": "reverse_iron_condor",
+    "reason": "long_defined_vol_implied_0.87x_hist",
+    "details": {
+      "days_before": 3,
+      "iv_rank": null,
+      "implied_move_pct": 2.8,
+      "hist_abs_median": 3.2007501539364225,
+      "rich_ratio": 1.2,
+      "iv_gate": 50.0,
+      "implied_over_hist": 0.874794927856658
+    }
+  },
   "rows": [
     {
       "event_key": "NVDA:2025-02-26:amc",
@@ -230,24 +244,107 @@
   "contrast": [
     {
       "event": "NVDA:2025-02-26:amc",
-      "short_iron_condor": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "short_iron_condor",
-        "path": null
-      },
-      "long_straddle": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_straddle"
-      },
-      "long_call": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_call"
+      "implied_pct": 3.1524794918100176,
+      "implied_source": "loo_realized_median",
+      "fills": "missing_quotes",
+      "recipes": {
+        "do_nothing": {
+          "recipe": "do_nothing",
+          "status": "scored",
+          "path_outcome": "flat",
+          "thesis": "control",
+          "pnl_usd": 0.0
+        },
+        "short_iron_condor": {
+          "recipe": "short_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt",
+          "shorts": {
+            "put": 127.1414237409311,
+            "call": 135.41857381766263
+          },
+          "wings": {
+            "put": 122.1414237409311,
+            "call": 140.41857381766263
+          }
+        },
+        "short_iron_fly": {
+          "recipe": "short_iron_fly",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        },
+        "put_credit_spread": {
+          "recipe": "put_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        },
+        "call_credit_spread": {
+          "recipe": "call_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "reverse_iron_condor": {
+          "recipe": "reverse_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "helped"
+        },
+        "long_straddle": {
+          "recipe": "long_straddle",
+          "status": "path_scored",
+          "path_outcome": "realized_gt_implied",
+          "thesis": "helped",
+          "close_move_pct": -8.478060143898471,
+          "implied_pct": 3.1524794918100176
+        },
+        "long_strangle": {
+          "recipe": "long_strangle",
+          "status": "path_scored",
+          "path_outcome": "realized_gt_implied",
+          "thesis": "helped",
+          "close_move_pct": -8.478060143898471,
+          "implied_pct": 3.1524794918100176
+        },
+        "long_call": {
+          "recipe": "long_call",
+          "status": "path_scored",
+          "path_outcome": "down_or_flat",
+          "thesis": "direction_wrong",
+          "note": "direction is not P&L; crush can still erase a correct call"
+        },
+        "long_put": {
+          "recipe": "long_put",
+          "status": "path_scored",
+          "path_outcome": "down_close",
+          "thesis": "direction_right_crush_unknown"
+        },
+        "iv_expansion_exit_before": {
+          "recipe": "iv_expansion_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "calendar_short_front": {
+          "recipe": "calendar_short_front",
+          "status": "path_scored",
+          "path_outcome": "away_from_strike",
+          "thesis": "hurt",
+          "note": "proxy only; true calendar P&L needs two expiries"
+        },
+        "reverse_calendar_exit_before": {
+          "recipe": "reverse_calendar_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "broken_wing_butterfly": {
+          "recipe": "broken_wing_butterfly",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        }
       },
       "do_nothing": {
         "variant": "do_nothing",
@@ -257,24 +354,107 @@
     },
     {
       "event": "NVDA:2025-05-28:amc",
-      "short_iron_condor": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "short_iron_condor",
-        "path": null
-      },
-      "long_straddle": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_straddle"
-      },
-      "long_call": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_call"
+      "implied_pct": 3.1524794918100176,
+      "implied_source": "loo_realized_median",
+      "fills": "missing_quotes",
+      "recipes": {
+        "do_nothing": {
+          "recipe": "do_nothing",
+          "status": "scored",
+          "path_outcome": "flat",
+          "thesis": "control",
+          "pnl_usd": 0.0
+        },
+        "short_iron_condor": {
+          "recipe": "short_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt",
+          "shorts": {
+            "put": 130.5601400326495,
+            "call": 139.059855084538
+          },
+          "wings": {
+            "put": 125.56014003264951,
+            "call": 144.059855084538
+          }
+        },
+        "short_iron_fly": {
+          "recipe": "short_iron_fly",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        },
+        "put_credit_spread": {
+          "recipe": "put_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "call_credit_spread": {
+          "recipe": "call_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt"
+        },
+        "reverse_iron_condor": {
+          "recipe": "reverse_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "helped"
+        },
+        "long_straddle": {
+          "recipe": "long_straddle",
+          "status": "path_scored",
+          "path_outcome": "realized_gt_implied",
+          "thesis": "helped",
+          "close_move_pct": 3.2490208160628273,
+          "implied_pct": 3.1524794918100176
+        },
+        "long_strangle": {
+          "recipe": "long_strangle",
+          "status": "path_scored",
+          "path_outcome": "realized_gt_implied",
+          "thesis": "helped",
+          "close_move_pct": 3.2490208160628273,
+          "implied_pct": 3.1524794918100176
+        },
+        "long_call": {
+          "recipe": "long_call",
+          "status": "path_scored",
+          "path_outcome": "up_close",
+          "thesis": "direction_right_crush_unknown",
+          "note": "direction is not P&L; crush can still erase a correct call"
+        },
+        "long_put": {
+          "recipe": "long_put",
+          "status": "path_scored",
+          "path_outcome": "up_or_flat",
+          "thesis": "direction_wrong"
+        },
+        "iv_expansion_exit_before": {
+          "recipe": "iv_expansion_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "calendar_short_front": {
+          "recipe": "calendar_short_front",
+          "status": "path_scored",
+          "path_outcome": "away_from_strike",
+          "thesis": "hurt",
+          "note": "proxy only; true calendar P&L needs two expiries"
+        },
+        "reverse_calendar_exit_before": {
+          "recipe": "reverse_calendar_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "broken_wing_butterfly": {
+          "recipe": "broken_wing_butterfly",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt"
+        }
       },
       "do_nothing": {
         "variant": "do_nothing",
@@ -284,28 +464,107 @@
     },
     {
       "event": "NVDA:2025-08-27:amc",
-      "short_iron_condor": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "short_iron_condor",
-        "path": {
+      "implied_pct": 3.0,
+      "implied_source": "vendor_orats_proxy",
+      "fills": "missing_quotes",
+      "recipes": {
+        "do_nothing": {
+          "recipe": "do_nothing",
+          "status": "scored",
+          "path_outcome": "flat",
+          "thesis": "control",
+          "pnl_usd": 0.0
+        },
+        "short_iron_condor": {
+          "recipe": "short_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped",
+          "shorts": {
+            "put": 176.15200592041015,
+            "call": 187.0480062866211
+          },
+          "wings": {
+            "put": 171.15200592041015,
+            "call": 192.0480062866211
+          }
+        },
+        "short_iron_fly": {
+          "recipe": "short_iron_fly",
+          "status": "path_scored",
+          "path_outcome": "tested_atm_shorts",
+          "thesis": "hurt"
+        },
+        "put_credit_spread": {
+          "recipe": "put_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "call_credit_spread": {
+          "recipe": "call_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "reverse_iron_condor": {
+          "recipe": "reverse_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "hurt"
+        },
+        "long_straddle": {
+          "recipe": "long_straddle",
+          "status": "path_scored",
+          "path_outcome": "realized_le_implied",
+          "thesis": "hurt",
           "close_move_pct": -0.7874492767115765,
-          "vendor_implied_move_pct": 3.0,
-          "close_beyond_implied": false
+          "implied_pct": 3.0
+        },
+        "long_strangle": {
+          "recipe": "long_strangle",
+          "status": "path_scored",
+          "path_outcome": "realized_le_implied",
+          "thesis": "hurt",
+          "close_move_pct": -0.7874492767115765,
+          "implied_pct": 3.0
+        },
+        "long_call": {
+          "recipe": "long_call",
+          "status": "path_scored",
+          "path_outcome": "down_or_flat",
+          "thesis": "direction_wrong",
+          "note": "direction is not P&L; crush can still erase a correct call"
+        },
+        "long_put": {
+          "recipe": "long_put",
+          "status": "path_scored",
+          "path_outcome": "down_close",
+          "thesis": "direction_right_crush_unknown"
+        },
+        "iv_expansion_exit_before": {
+          "recipe": "iv_expansion_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "calendar_short_front": {
+          "recipe": "calendar_short_front",
+          "status": "path_scored",
+          "path_outcome": "near_strike",
+          "thesis": "helped",
+          "note": "proxy only; true calendar P&L needs two expiries"
+        },
+        "reverse_calendar_exit_before": {
+          "recipe": "reverse_calendar_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "broken_wing_butterfly": {
+          "recipe": "broken_wing_butterfly",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
         }
-      },
-      "long_straddle": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_straddle"
-      },
-      "long_call": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_call"
       },
       "do_nothing": {
         "variant": "do_nothing",
@@ -315,28 +574,107 @@
     },
     {
       "event": "NVDA:2025-11-19:amc",
-      "short_iron_condor": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "short_iron_condor",
-        "path": {
+      "implied_pct": 3.4,
+      "implied_source": "vendor_orats_proxy",
+      "fills": "missing_quotes",
+      "recipes": {
+        "do_nothing": {
+          "recipe": "do_nothing",
+          "status": "scored",
+          "path_outcome": "flat",
+          "thesis": "control",
+          "pnl_usd": 0.0
+        },
+        "short_iron_condor": {
+          "recipe": "short_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt",
+          "shorts": {
+            "put": 180.17832412719727,
+            "call": 192.8616844177246
+          },
+          "wings": {
+            "put": 175.17832412719727,
+            "call": 197.8616844177246
+          }
+        },
+        "short_iron_fly": {
+          "recipe": "short_iron_fly",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        },
+        "put_credit_spread": {
+          "recipe": "put_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt"
+        },
+        "call_credit_spread": {
+          "recipe": "call_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt"
+        },
+        "reverse_iron_condor": {
+          "recipe": "reverse_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "helped"
+        },
+        "long_straddle": {
+          "recipe": "long_straddle",
+          "status": "path_scored",
+          "path_outcome": "realized_le_implied",
+          "thesis": "hurt",
           "close_move_pct": -3.1524794918100176,
-          "vendor_implied_move_pct": 3.4,
-          "close_beyond_implied": false
+          "implied_pct": 3.4
+        },
+        "long_strangle": {
+          "recipe": "long_strangle",
+          "status": "path_scored",
+          "path_outcome": "realized_le_implied",
+          "thesis": "hurt",
+          "close_move_pct": -3.1524794918100176,
+          "implied_pct": 3.4
+        },
+        "long_call": {
+          "recipe": "long_call",
+          "status": "path_scored",
+          "path_outcome": "down_or_flat",
+          "thesis": "direction_wrong",
+          "note": "direction is not P&L; crush can still erase a correct call"
+        },
+        "long_put": {
+          "recipe": "long_put",
+          "status": "path_scored",
+          "path_outcome": "down_close",
+          "thesis": "direction_right_crush_unknown"
+        },
+        "iv_expansion_exit_before": {
+          "recipe": "iv_expansion_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "calendar_short_front": {
+          "recipe": "calendar_short_front",
+          "status": "path_scored",
+          "path_outcome": "away_from_strike",
+          "thesis": "hurt",
+          "note": "proxy only; true calendar P&L needs two expiries"
+        },
+        "reverse_calendar_exit_before": {
+          "recipe": "reverse_calendar_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "broken_wing_butterfly": {
+          "recipe": "broken_wing_butterfly",
+          "status": "path_scored",
+          "path_outcome": "in_wing",
+          "thesis": "hurt"
         }
-      },
-      "long_straddle": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_straddle"
-      },
-      "long_call": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_call"
       },
       "do_nothing": {
         "variant": "do_nothing",
@@ -346,28 +684,107 @@
     },
     {
       "event": "NVDA:2026-02-25:amc",
-      "short_iron_condor": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "short_iron_condor",
-        "path": {
+      "implied_pct": 3.0,
+      "implied_source": "vendor_orats_proxy",
+      "fills": "missing_quotes",
+      "recipes": {
+        "do_nothing": {
+          "recipe": "do_nothing",
+          "status": "scored",
+          "path_outcome": "flat",
+          "thesis": "control",
+          "pnl_usd": 0.0
+        },
+        "short_iron_condor": {
+          "recipe": "short_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt",
+          "shorts": {
+            "put": 189.69319763183594,
+            "call": 201.42679748535156
+          },
+          "wings": {
+            "put": 184.69319763183594,
+            "call": 206.42679748535156
+          }
+        },
+        "short_iron_fly": {
+          "recipe": "short_iron_fly",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        },
+        "put_credit_spread": {
+          "recipe": "put_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
+        },
+        "call_credit_spread": {
+          "recipe": "call_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "reverse_iron_condor": {
+          "recipe": "reverse_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "helped"
+        },
+        "long_straddle": {
+          "recipe": "long_straddle",
+          "status": "path_scored",
+          "path_outcome": "realized_gt_implied",
+          "thesis": "helped",
           "close_move_pct": -5.456125128938174,
-          "vendor_implied_move_pct": 3.0,
-          "close_beyond_implied": true
+          "implied_pct": 3.0
+        },
+        "long_strangle": {
+          "recipe": "long_strangle",
+          "status": "path_scored",
+          "path_outcome": "realized_gt_implied",
+          "thesis": "helped",
+          "close_move_pct": -5.456125128938174,
+          "implied_pct": 3.0
+        },
+        "long_call": {
+          "recipe": "long_call",
+          "status": "path_scored",
+          "path_outcome": "down_or_flat",
+          "thesis": "direction_wrong",
+          "note": "direction is not P&L; crush can still erase a correct call"
+        },
+        "long_put": {
+          "recipe": "long_put",
+          "status": "path_scored",
+          "path_outcome": "down_close",
+          "thesis": "direction_right_crush_unknown"
+        },
+        "iv_expansion_exit_before": {
+          "recipe": "iv_expansion_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "calendar_short_front": {
+          "recipe": "calendar_short_front",
+          "status": "path_scored",
+          "path_outcome": "away_from_strike",
+          "thesis": "hurt",
+          "note": "proxy only; true calendar P&L needs two expiries"
+        },
+        "reverse_calendar_exit_before": {
+          "recipe": "reverse_calendar_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "broken_wing_butterfly": {
+          "recipe": "broken_wing_butterfly",
+          "status": "path_scored",
+          "path_outcome": "beyond_wing",
+          "thesis": "hurt"
         }
-      },
-      "long_straddle": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_straddle"
-      },
-      "long_call": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_call"
       },
       "do_nothing": {
         "variant": "do_nothing",
@@ -377,28 +794,107 @@
     },
     {
       "event": "NVDA:2026-05-20:amc",
-      "short_iron_condor": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "short_iron_condor",
-        "path": {
+      "implied_pct": 2.8,
+      "implied_source": "vendor_orats_proxy",
+      "fills": "missing_quotes",
+      "recipes": {
+        "do_nothing": {
+          "recipe": "do_nothing",
+          "status": "scored",
+          "path_outcome": "flat",
+          "thesis": "control",
+          "pnl_usd": 0.0
+        },
+        "short_iron_condor": {
+          "recipe": "short_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped",
+          "shorts": {
+            "put": 217.21284118652343,
+            "call": 229.72716125488282
+          },
+          "wings": {
+            "put": 212.21284118652343,
+            "call": 234.72716125488282
+          }
+        },
+        "short_iron_fly": {
+          "recipe": "short_iron_fly",
+          "status": "path_scored",
+          "path_outcome": "tested_atm_shorts",
+          "thesis": "hurt"
+        },
+        "put_credit_spread": {
+          "recipe": "put_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "call_credit_spread": {
+          "recipe": "call_credit_spread",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
+        },
+        "reverse_iron_condor": {
+          "recipe": "reverse_iron_condor",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "hurt"
+        },
+        "long_straddle": {
+          "recipe": "long_straddle",
+          "status": "path_scored",
+          "path_outcome": "realized_le_implied",
+          "thesis": "hurt",
           "close_move_pct": -1.7720529342800742,
-          "vendor_implied_move_pct": 2.8,
-          "close_beyond_implied": false
+          "implied_pct": 2.8
+        },
+        "long_strangle": {
+          "recipe": "long_strangle",
+          "status": "path_scored",
+          "path_outcome": "realized_le_implied",
+          "thesis": "hurt",
+          "close_move_pct": -1.7720529342800742,
+          "implied_pct": 2.8
+        },
+        "long_call": {
+          "recipe": "long_call",
+          "status": "path_scored",
+          "path_outcome": "down_or_flat",
+          "thesis": "direction_wrong",
+          "note": "direction is not P&L; crush can still erase a correct call"
+        },
+        "long_put": {
+          "recipe": "long_put",
+          "status": "path_scored",
+          "path_outcome": "down_close",
+          "thesis": "direction_right_crush_unknown"
+        },
+        "iv_expansion_exit_before": {
+          "recipe": "iv_expansion_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "calendar_short_front": {
+          "recipe": "calendar_short_front",
+          "status": "path_scored",
+          "path_outcome": "away_from_strike",
+          "thesis": "hurt",
+          "note": "proxy only; true calendar P&L needs two expiries"
+        },
+        "reverse_calendar_exit_before": {
+          "recipe": "reverse_calendar_exit_before",
+          "status": "unscored_needs_iv_path",
+          "note": "expansion recipes exit before the print; daily bars cannot score them"
+        },
+        "broken_wing_butterfly": {
+          "recipe": "broken_wing_butterfly",
+          "status": "path_scored",
+          "path_outcome": "inside",
+          "thesis": "helped"
         }
-      },
-      "long_straddle": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_straddle"
-      },
-      "long_call": {
-        "status": "unscored_missing_quotes",
-        "pnl_usd": null,
-        "note": "need bid/ask chain on entry and exit dates",
-        "variant": "long_call"
       },
       "do_nothing": {
         "variant": "do_nothing",
