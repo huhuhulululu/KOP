@@ -4,8 +4,10 @@ import argparse
 import json
 from datetime import date, datetime, timezone
 
-from kop.calendar import completed_for_tape, fetch_yahoo_next_earnings, next_event, seeded_events
+from kop.calendar import completed_for_tape, fetch_yahoo_next_earnings, last_event, next_event, seeded_events
 from kop.config import PLAYBOOK, SYMBOL, WATCHLIST_OBSERVE_ONLY
+from kop.day import run_day
+from kop.phase1 import evaluate_phase1
 from kop.forbidden import assert_clean_process
 from kop.indicators import path_stats
 from kop.ledger import Store
@@ -37,7 +39,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("select", help="pick a recipe from the live snapshot; no order")
     sub.add_parser("snapshot", help="print every live gate; persist; no order")
     sub.add_parser("status", help="ledger + gate status")
-    sub.add_parser("paper-once", help="select a recipe; refuse to fill unless AUTO_TRADE")
+    sub.add_parser("paper-once", help="select a recipe; no broker order")
+    sub.add_parser("day", help="live paper session: mark, exit, maybe paper-fill; broker locked")
+    sub.add_parser("book", help="open paper positions")
+    sub.add_parser("pnl", help="phase-1 scoreboard vs $500/month")
+    sub.add_parser("phase1", help="why $500/month is or is not reachable")
     args = parser.parse_args(argv)
     handlers = {
         "calendar": cmd_calendar,
@@ -51,6 +57,10 @@ def main(argv: list[str] | None = None) -> int:
         "snapshot": cmd_snapshot,
         "status": cmd_status,
         "paper-once": cmd_paper_once,
+        "day": cmd_day,
+        "book": cmd_book,
+        "pnl": cmd_pnl,
+        "phase1": cmd_phase1,
     }
     return handlers[args.cmd]()
 
@@ -66,8 +76,15 @@ def cmd_calendar() -> int:
     print("tape_window:")
     for event in completed_for_tape(SYMBOL, today):
         print(f"  {event.announce_date} {event.fiscal_label}")
+    last = last_event(SYMBOL, today)
+    print(f"last_event={last.key if last else None}")
     yahoo = fetch_yahoo_next_earnings(SYMBOL)
     print(f"yahoo_next_earnings={yahoo}")
+    nxt = next_event(SYMBOL, today)
+    print(f"next_event={nxt.key if nxt else None} confirmed={nxt.confirmed if nxt else None}")
+    print("watchlist_yahoo_next:")
+    for name in WATCHLIST_OBSERVE_ONLY:
+        print(f"  {name} {fetch_yahoo_next_earnings(name)}")
     return 0
 
 
@@ -393,4 +410,56 @@ def cmd_paper_once() -> int:
     )
     _persist_select(store, live, result["selected_recipe"]["id"], result["select_reason"], result)
     print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_day() -> int:
+    store = Store()
+    payload = run_day(store)
+    print(json.dumps(payload, indent=2, default=str))
+    return 0
+
+
+def cmd_book() -> int:
+    store = Store()
+    print(json.dumps({"open": store.open_positions(), "summary": store.summary()}, indent=2, default=str))
+    return 0
+
+
+def cmd_pnl() -> int:
+    return cmd_phase1()
+
+
+def cmd_phase1() -> int:
+    store = Store()
+    today = datetime.now(timezone.utc).date()
+    try:
+        live = collect_live(store)
+        snap = live.snapshot
+        asof = live.asof
+    except RuntimeError as exc:
+        snap = None
+        asof = today
+        live_error = str(exc)
+    else:
+        live_error = None
+    month = asof.isoformat()[:7]
+    phase = evaluate_phase1(
+        snapshot=snap,
+        countable_tape=store.countable_tape(),
+        realized_month_usd=store.realized_pnl(month),
+        realized_all_usd=store.realized_pnl(),
+    )
+    print(
+        json.dumps(
+            {
+                "asof": asof.isoformat(),
+                "live_error": live_error,
+                "phase1": phase.as_dict(),
+                "book": {"open": store.open_position_count(), "realized_all_usd": store.realized_pnl()},
+            },
+            indent=2,
+            default=str,
+        )
+    )
     return 0

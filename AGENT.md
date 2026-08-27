@@ -39,6 +39,6 @@
 
 ## 下一件机器自己做
 
-`kop snapshot` 每个交易日把每道门打出来。`AUTO_TRADE` 仍是 false。
-有 Polygon/ThetaData key 再补六次事件的权利金。没有 key 不要编。
-再谈第二只股票。
+`kop day` 每个交易日：盯市、按规则平、门全开才记 CBOE bid/ask 纸盘成交。`ALLOW_LIVE` / `AUTO_TRADE` 仍是 false。
+不要为了每月 $500 加张数或五只并行。算术在 `catalog/rules/phase1.md`。
+有 Polygon key 再补历史权利金。没有就不要编。不订阅也能把从今往后的带子记下来。

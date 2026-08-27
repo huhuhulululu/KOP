@@ -55,6 +55,13 @@ NAKED_SHORTS = False
 MARGIN_NAKED = False
 ALLOW_LIVE = False
 AUTO_TRADE = False
+# Book a CBOE bid/ask paper fill when every short-vol gate is open.
+# This is not a broker order. ALLOW_LIVE / AUTO_TRADE stay off.
+PAPER_FILLS = True
+MAX_OPEN_POSITIONS = 1
+MONTHLY_INCOME_TARGET_USD = 500.0
+EVENTS_PER_YEAR = 4
+MIN_COUNTABLE_TAPE_FOR_LIVE = 8
 # Human fills are optional overlays. Public recipes + path replay are the tape.
 REQUIRE_HUMAN_TAPE = False
 MIN_TAPE_SAMPLES_FOR_LOOP = 0

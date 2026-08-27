@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS positions (
     entry_reason TEXT,
     exit_reason TEXT,
     pnl_usd REAL,
-    legs_json TEXT
+    legs_json TEXT,
+    extra_json TEXT
 );
 CREATE TABLE IF NOT EXISTS fills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,6 +108,15 @@ CREATE TABLE IF NOT EXISTS observations (
     symbol TEXT NOT NULL,
     spot REAL,
     iv30 REAL,
+    payload TEXT
+);
+CREATE TABLE IF NOT EXISTS marks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    position_id INTEGER NOT NULL,
+    asof TEXT NOT NULL,
+    close_debit REAL,
+    mark_pnl_usd REAL,
     payload TEXT
 );
 CREATE TABLE IF NOT EXISTS snapshots (
@@ -150,6 +160,9 @@ class Store:
         for name, typ in extras.items():
             if name not in existing:
                 self.conn.execute(f"ALTER TABLE tape_rows ADD COLUMN {name} {typ}")
+        pos_cols = {row[1] for row in self.conn.execute("PRAGMA table_info(positions)")}
+        if "extra_json" not in pos_cols:
+            self.conn.execute("ALTER TABLE positions ADD COLUMN extra_json TEXT")
         self.conn.commit()
 
     def record_event(self, symbol: str, announce_date: str, session: str, fiscal_label: str, source: str) -> None:
@@ -189,7 +202,11 @@ class Store:
                 reaction_low=excluded.reaction_low,
                 reaction_close=excluded.reaction_close,
                 vendor_implied_move_pct=excluded.vendor_implied_move_pct,
-                vendor_iv_crush_pct=excluded.vendor_iv_crush_pct
+                vendor_iv_crush_pct=excluded.vendor_iv_crush_pct,
+                exit_date=excluded.exit_date,
+                exit_net=excluded.exit_net,
+                fees_usd=excluded.fees_usd,
+                pnl_usd=excluded.pnl_usd
             """,
             (
                 _now(),
@@ -305,4 +322,128 @@ class Store:
             "journal": journal_n,
             "observations": obs_n,
             "snapshots": snap_n,
+            "open_positions": self.open_position_count(),
+            "realized_pnl_usd": self.realized_pnl(),
+        }
+
+    def insert_position(
+        self,
+        *,
+        playbook: str,
+        symbol: str,
+        event_key: str | None,
+        structure: str,
+        expiration: str | None,
+        max_loss_usd: float,
+        credit_usd: float | None,
+        status: str,
+        entry_reason: str,
+        legs_json: str,
+        extra: dict[str, Any] | None = None,
+    ) -> int:
+        cur = self.conn.execute(
+            """
+            INSERT INTO positions (
+                created_at, playbook, symbol, event_key, structure, expiration,
+                max_loss_usd, credit_usd, status, entry_reason, legs_json, extra_json
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                _now(),
+                playbook,
+                symbol,
+                event_key,
+                structure,
+                expiration,
+                max_loss_usd,
+                credit_usd,
+                status,
+                entry_reason,
+                legs_json,
+                json.dumps(extra or {}),
+            ),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def insert_fill(self, position_id: int, leg: Any, reason: str) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO fills (
+                position_id, created_at, occ_symbol, side, quantity, bid, ask,
+                fill_price, slippage, fee_usd, multiplier, quote_kind, reason
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                position_id,
+                _now(),
+                leg.occ.symbol,
+                leg.side,
+                leg.quantity,
+                leg.bid,
+                leg.ask,
+                leg.fill_price,
+                leg.slippage,
+                leg.fee_usd,
+                100,
+                leg.quote_kind,
+                reason,
+            ),
+        )
+        self.conn.commit()
+
+    def open_positions(self) -> list[dict[str, Any]]:
+        rows = self.conn.execute("SELECT * FROM positions WHERE status = 'open' ORDER BY id").fetchall()
+        return [self._position_dict(row) for row in rows]
+
+    def open_position_count(self) -> int:
+        row = self.conn.execute("SELECT COUNT(*) FROM positions WHERE status = 'open'").fetchone()
+        return int(row[0])
+
+    def close_position(self, position_id: int, reason: str, pnl_usd: float, mark: dict[str, Any]) -> None:
+        self.conn.execute(
+            "UPDATE positions SET status = 'closed', exit_reason = ?, pnl_usd = ? WHERE id = ?",
+            (reason, pnl_usd, position_id),
+        )
+        self.record_mark(position_id, mark.get("asof") or _now()[:10], mark)
+        self.conn.commit()
+
+    def record_mark(self, position_id: int, asof: str, mark: dict[str, Any]) -> None:
+        self.conn.execute(
+            "INSERT INTO marks (created_at, position_id, asof, close_debit, mark_pnl_usd, payload) VALUES (?,?,?,?,?,?)",
+            (_now(), position_id, asof, mark.get("close_debit"), mark.get("mark_pnl_usd"), json.dumps(mark, default=str)),
+        )
+        self.conn.commit()
+
+    def realized_pnl(self, month: str | None = None) -> float:
+        if month:
+            row = self.conn.execute(
+                "SELECT COALESCE(SUM(pnl_usd), 0) FROM positions WHERE status = 'closed' AND created_at LIKE ?",
+                (f"{month}%",),
+            ).fetchone()
+        else:
+            row = self.conn.execute(
+                "SELECT COALESCE(SUM(pnl_usd), 0) FROM positions WHERE status = 'closed'"
+            ).fetchone()
+        return float(row[0])
+
+    def _position_dict(self, row: sqlite3.Row) -> dict[str, Any]:
+        extra = json.loads(row["extra_json"] or "{}")
+        legs = json.loads(row["legs_json"] or "[]")
+        return {
+            "id": row["id"],
+            "created_at": row["created_at"],
+            "playbook": row["playbook"],
+            "symbol": row["symbol"],
+            "event_key": row["event_key"],
+            "structure": row["structure"],
+            "expiration": row["expiration"],
+            "max_loss_usd": row["max_loss_usd"],
+            "credit_usd": row["credit_usd"],
+            "status": row["status"],
+            "entry_reason": row["entry_reason"],
+            "exit_reason": row["exit_reason"],
+            "pnl_usd": row["pnl_usd"],
+            "legs": legs,
+            "extra": extra,
         }

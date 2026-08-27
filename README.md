@@ -37,7 +37,11 @@ python3 -m kop replay       # 最近 6 次 NVDA 财报现货路径
 python3 -m kop tape
 python3 -m kop sweep        # 同一段历史上给每条配方打路径分
 python3 -m kop status
-python3 -m kop paper-once   # 选出配方；AUTO_TRADE=false 所以不成交
+python3 -m kop paper-once   # 选出配方；不成交到券商
+python3 -m kop day          # 日更：盯市 / 平仓 / 门全开才记纸盘成交；券商锁着
+python3 -m kop phase1       # 每月 $500 记分板和算术
+python3 -m kop book
+python3 -m kop pnl
 python3 -m unittest discover -s tests -q
 ```
 
@@ -58,7 +62,9 @@ python3 -m unittest discover -s tests -q
 公开配方的对照打的是路径是否帮论文，见 `catalog/public/structures.md`。
 每道门的公式和源见 `catalog/public/indicators.md`，接口清单见 `catalog/public/data_sources.md`。
 
-值得付的：Polygon/Massive options（约 $29–79/月）或 ThetaData，用来补六次财报当天的 bid/ask。设 `POLYGON_API_KEY` 才会去拉。
+值得付的：Polygon/Massive options（约 $29–79/月）或 ThetaData，用来补六次财报当天的 bid/ask。设 `POLYGON_API_KEY` 才会去拉。第一阶段**先不订阅**。从今往后的成交用 CBOE 延迟买卖价记纸盘。
+
+第一阶段目标每月 $500 是记分板。现在这套 1 张 NVDA 财报铁秃鹰就算从没亏过大约 $42/月，路径 2/6，EV 为负。算术见 `catalog/rules/phase1.md`。不靠加张数凑。
 
 ## 和 BTCHOUR 的关系
 

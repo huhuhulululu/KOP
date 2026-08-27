@@ -32,9 +32,33 @@ def completed_for_tape(symbol: str, asof: date) -> list[EarningsEvent]:
     return prior[-6:]
 
 
-def next_event(symbol: str, asof: date) -> EarningsEvent | None:
+def last_event(symbol: str, asof: date) -> EarningsEvent | None:
+    prior = [event for event in seeded_events(symbol) if event.announce_date <= asof]
+    return prior[-1] if prior else None
+
+
+def next_event(symbol: str, asof: date, *, allow_yahoo: bool = True) -> EarningsEvent | None:
     upcoming = [event for event in seeded_events(symbol) if event.announce_date >= asof]
-    return upcoming[0] if upcoming else None
+    if upcoming:
+        return upcoming[0]
+    if not allow_yahoo:
+        return None
+    yahoo = fetch_yahoo_next_earnings(symbol)
+    if yahoo is None or yahoo < asof:
+        return None
+    return EarningsEvent(symbol.upper(), yahoo, "unknown", "yahoo_next", "yahoo_calendarEvents", False)
+
+
+def event_from_key(key: str) -> EarningsEvent | None:
+    parts = (key or "").split(":")
+    if len(parts) < 3:
+        return None
+    try:
+        announce = date.fromisoformat(parts[1])
+    except ValueError:
+        return None
+    session = parts[2] if parts[2] in {"amc", "bmo", "unknown"} else "unknown"
+    return EarningsEvent(parts[0], announce, session, "", "event_key", True)
 
 
 def fetch_yahoo_next_earnings(symbol: str) -> date | None:
